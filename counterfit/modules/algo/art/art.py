@@ -1,6 +1,8 @@
 import numpy as np
 from counterfit.module import CFAlgo
 from counterfit.targets import CFTarget
+from PIL import Image
+import torch.nn as nn
 
 
 from art.estimators.classification import PyTorchClassifier
@@ -21,7 +23,6 @@ class ArtInferenceAttack(CFAlgo):
         y,
         input_shape,
         num_classes,
-        loss,
         x=None,
     ) -> bool:
 
@@ -29,14 +30,22 @@ class ArtInferenceAttack(CFAlgo):
         Build the attack.
         """
 
-        target_classifier = self.classifier_cls(target, input_shape=input_shape, nb_classes=num_classes, loss=loss)
+        target_classifier = self.classifier_cls(target, input_shape=input_shape, nb_classes=num_classes, loss=nn.CrossEntropyLoss())
         attack = self.attack_cls(target_classifier)
 
         self.pre_attack_processing()
     
         y_onehot = None
         # create one-hot
-        if type(y) == int:
+        if y is None:
+            self.results = []
+            for i in range(num_classes):
+                a = np.array([i])
+                y_onehot = np.zeros((a.size, num_classes))
+                y_onehot[np.arange(a.size),a] = 1
+                self.results.append(self.runHelper(attack, x,y_onehot, i)[0])
+            return True
+        elif type(y) == int:
             a = np.array([y])
             y_onehot = np.zeros((a.size, num_classes))
             y_onehot[np.arange(a.size),a] = 1
@@ -45,12 +54,23 @@ class ArtInferenceAttack(CFAlgo):
             y_onehot[np.arange(y.size),y] = 1
         else:
             y_onehot = y
-
-        if x:
-            self.results = attack.infer(x=x, y=y_onehot)
-        else:
-            self.results = attack.infer(None, y=y_onehot)
+        self.results = self.runHelper(attack, x,y_onehot, y)
         return True
+    
+    def runHelper(self, attack, x, y_onehot, y):
+        ret = None
+        if x:
+            ret = attack.infer(x=x, y=y_onehot)
+        else:
+            ret =  attack.infer(None, y=y_onehot)
+
+        result = ret[0]*255
+        result = np.array(result, dtype=np.uint8)
+        result = np.moveaxis(result, 0, -1)
+        image = Image.fromarray(result)
+        image.save(f"/results/{y}.png")
+        return ret
+
 
     def pre_attack_processing(self):
         pass

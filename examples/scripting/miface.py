@@ -67,10 +67,22 @@ if __name__ == "__main__":
     target  = torchvision.models.resnet18(weights=True)
     input_shape = (3,256,256)
     num_classes = 1000
-    loss = 0.3
+    loss = 0.1
     print("running MIFace")
     mif = CFMIFace(framework="PyTorch")
-    mif.run(target, y=1, input_shape=input_shape, num_classes=num_classes, loss=loss)
+    mif.run(target, y=None, input_shape=input_shape, num_classes=num_classes)
+
+    # Moved the following lines to art.py so that it would write out images as it 
+    # discovered them instead of all at the end
+    # print(len(mif.results))
+    # print(mif.results[0].shape)
+    # for i in range(len(mif.results)):
+    #     result = mif.results[i]*255
+    #     result = np.array(result, dtype=np.uint8)
+    #     result = np.moveaxis(result, 0, -1)
+    #     image = Image.fromarray(result)
+    #     image.save(f"/results/{i}.png")
+
 
     print("done")
     # Image.fromarray((im_a * 255).astype(np.uint8), "RGB").save("./maybe.png")
