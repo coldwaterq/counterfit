@@ -7,6 +7,7 @@ import torch.nn as nn
 
 from art.estimators.classification import PyTorchClassifier
 from art.utils import compute_success_array
+import art.config as config
 
 
 class ArtInferenceAttack(CFAlgo):
@@ -24,14 +25,31 @@ class ArtInferenceAttack(CFAlgo):
         input_shape,
         num_classes,
         x=None,
+        max_iter = 10000
     ) -> bool:
 
         """
         Build the attack.
         """
 
-        target_classifier = self.classifier_cls(target, input_shape=input_shape, nb_classes=num_classes, loss=nn.CrossEntropyLoss())
-        attack = self.attack_cls(target_classifier)
+        target_classifier = self.classifier_cls(
+            target, 
+            input_shape=input_shape, 
+            nb_classes=num_classes, 
+            loss=nn.CrossEntropyLoss(),
+            clip_values = (0.0,1.0)
+        )
+
+        attack = self.attack_cls(
+            target_classifier, 
+            max_iter = max_iter, 
+            window_length = 100, 
+            threshold = 0.99, 
+            learning_rate = 0.1, 
+            batch_size = 1, 
+            verbose = True
+        )
+        print(config.ART_NUMPY_DTYPE)
 
         self.pre_attack_processing()
     
@@ -59,11 +77,11 @@ class ArtInferenceAttack(CFAlgo):
     
     def runHelper(self, attack, x, y_onehot, y):
         ret = None
-        if x:
+        if x is not None:
             ret = attack.infer(x=x, y=y_onehot)
         else:
             ret =  attack.infer(None, y=y_onehot)
-
+            
         result = ret[0]*255
         result = np.array(result, dtype=np.uint8)
         result = np.moveaxis(result, 0, -1)

@@ -5,6 +5,7 @@ from datasets import load_dataset
 import torch
 import io
 import numpy as np
+import os
 import torchvision
 
 from counterfit.modules.algo.art.inference.miface import CFMIFace
@@ -64,14 +65,17 @@ class MyTarget(CFTarget):
 if __name__ == "__main__":
     # Test the load and predict
     print("creating target")
-    target  = torchvision.models.resnet18(weights=True)
+    target  = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
     input_shape = (3,256,256)
     num_classes = 1000
-    loss = 0.1
     print("running MIFace")
     mif = CFMIFace(framework="PyTorch")
-    mif.run(target, y=None, input_shape=input_shape, num_classes=num_classes)
-
+    x = None
+    y = 1
+    for i in range(10):
+        mif.run(target, x=x, y=y, input_shape=input_shape, num_classes=num_classes)
+        x = mif.results
+        os.rename(f"/results/{y}.png",f"/results/i{i}.png")
     # Moved the following lines to art.py so that it would write out images as it 
     # discovered them instead of all at the end
     # print(len(mif.results))
